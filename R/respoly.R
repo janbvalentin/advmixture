@@ -9,7 +9,7 @@
 #' @param t2
 #' @param order
 #'
-#' @returns
+#' @returns matrix
 #' @export
 #'
 #' @examples
