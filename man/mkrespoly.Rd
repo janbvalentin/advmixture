@@ -6,9 +6,21 @@
 \usage{
 mkrespoly(x, t1, t2, order = 4)
 }
+\arguments{
+\item{x}{numeric vector}
+
+\item{t1}{numeric scalar indicating first knot point}
+
+\item{t2}{numeric scalar indicating second knot point}
+
+\item{order}{integer > 3 defining the polynomial order. Degrees of freedom = order - 2. Default order is 4}
+}
 \value{
-matrix
+matrix with number of rows equal to the length of x and number of columns equal to degrees of freedom.
 }
 \description{
 Make restricted polynomials
+}
+\examples{
+mkrespoly(c(0,1,2,3,4,5,6,7,8,9,10),0.5,9.5,6)
 }

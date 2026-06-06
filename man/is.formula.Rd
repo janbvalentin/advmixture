@@ -2,10 +2,19 @@
 % Please edit documentation in R/nlcombination.R
 \name{is.formula}
 \alias{is.formula}
-\title{Title}
+\title{Is object formula}
 \usage{
 is.formula(x)
 }
+\arguments{
+\item{x}{any object}
+}
+\value{
+boolean
+}
 \description{
-Title
+Is object formula
+}
+\examples{
+is.formula(~x1+x2)
 }

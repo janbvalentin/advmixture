@@ -4,15 +4,15 @@
 
 #' Make restricted polynomials
 #'
-#' @param x
-#' @param t1
-#' @param t2
-#' @param order
+#' @param x numeric vector
+#' @param t1 numeric scalar indicating first knot point
+#' @param t2 numeric scalar indicating second knot point
+#' @param order integer > 3 defining the polynomial order. Degrees of freedom = order - 2. Default order is 4
 #'
-#' @returns matrix
+#' @returns matrix with number of rows equal to the length of x and number of columns equal to degrees of freedom.
 #' @export
 #'
-#' @examples
+#' @examples mkrespoly(c(0,1,2,3,4,5,6,7,8,9,10),0.5,9.5,6)
 mkrespoly <- function(x,t1,t2,order=4) {
   if (order < 4) { stop("order must be 4 or larger") }
   if (t1 >= t2) { stop("t1 must be strictly smaller than t2") }

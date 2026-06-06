@@ -6,6 +6,15 @@
 \usage{
 inverse.logit(x)
 }
+\arguments{
+\item{x}{numeric vector or scalar}
+}
+\value{
+numeric vector or scalar of same length as x
+}
 \description{
 Inverse logit (sigmoid) function
+}
+\examples{
+inverse.logit(-3.4)
 }

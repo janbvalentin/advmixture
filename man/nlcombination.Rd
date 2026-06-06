@@ -13,6 +13,25 @@ nlcombination(
   conf.level = 0.95
 )
 }
+\arguments{
+\item{x}{formula or charecter.}
+
+\item{coefs}{numeric vector}
+
+\item{vcov}{symmetric positive definite numeric matrix with same number of rows and columns as length of coefs}
+
+\item{exp.form}{boolean indicating whether point estimate and corresponding confidence intervals should be exponentially transformed. Default is FALSE}
+
+\item{inv.logit.form}{boolean indicating whether point estimate and corresponding confidence intervals should be sigmoid transformed. If exp.form is TRUE, then inv.logit.form is ignored. Default is FALSE}
+
+\item{conf.level}{numeric scalar between 0 and 1 indicating level of confidence. Default is 0.95}
+}
+\value{
+numeric vector containing point estimate, untransformed std. error, confidence interval
+}
 \description{
 Non-linear combinations
+}
+\examples{
+nlcombination(~x1+x2,c(3,3),matrix(c(2.4265256,0.7562080,0.7562080,2.1329994),nrow=2))
 }
