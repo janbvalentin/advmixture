@@ -38,7 +38,8 @@ is.formula <- function(x) {is.call(x) && x[[1]] == quote(`~`)}
 #' @returns numeric vector containing point estimate, untransformed std. error, confidence interval
 #' @export
 #'
-#' @examples nlcombination(~x1+x2,c(3,3),matrix(c(2.4265256,0.7562080,0.7562080,2.1329994),nrow=2))
+#' @examples increment <- 1.3
+#' @examples nlcombination(~(x1+x2)/increment,c(3,3),matrix(c(2.4265256,0.7562080,0.7562080,2.1329994),nrow=2))
 nlcombination <- function(x,coefs,vcov,exp.form=FALSE,inv.logit.form=FALSE,conf.level=0.95) {
 
   if (is.character(x)) {
@@ -66,7 +67,7 @@ nlcombination <- function(x,coefs,vcov,exp.form=FALSE,inv.logit.form=FALSE,conf.
         stop("x is formula and must not contain the variable xx, stderr, or any of the function arguments")
       }
       if (!(vars %in% paste0("x",1:length(coefs)))) {
-        if(!(eval(call("is.numeric", as.name(vars))) && length(x) == 1)) {
+        if(!(eval(call("is.numeric", as.name(vars))) && length(vars) == 1)) {
           stop(sprintf("%s is not recognized as a numeric scalar",c(vars)))
         }
       }
