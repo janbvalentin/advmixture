@@ -30,9 +30,18 @@ nlcombination(
 numeric vector containing point estimate, untransformed std. error, confidence interval
 }
 \description{
-Non-linear combinations
+Uses the delta method to estimate ...
+}
+\note{
+Nothing to be noted
 }
 \examples{
 increment <- 1.3
 nlcombination(~(x1+x2)/increment,c(3,3),matrix(c(2.4265256,0.7562080,0.7562080,2.1329994),nrow=2))
+}
+\references{
+TBA
+}
+\author{
+Jan Brink Valentin
 }

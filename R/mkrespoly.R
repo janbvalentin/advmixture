@@ -1,18 +1,27 @@
-
-
-
-
-#' Make restricted polynomials
+#' Restricted polynomials
+#' @author Jan Brink Valentin
+#' @description
+#' The function generates a matrix containing the variables used to fit restricted polynomials of order n. The rows of the matrix has length length(x)
+#' and the number of columns are equal to n-2, where first column equals x and the remaining columns are functionals of x.
 #'
 #' @param x numeric vector
 #' @param t1 numeric scalar indicating first knot point
-#' @param t2 numeric scalar indicating second knot point
+#' @param t2 numeric scalar indicating second/last knot point
 #' @param order integer > 3 defining the polynomial order. Degrees of freedom = order - 2. Default order is 4
 #'
 #' @returns matrix with number of rows equal to the length of x and number of columns equal to degrees of freedom.
 #' @export
 #'
-#' @examples mkrespoly(c(0,1,2,3,4,5,6,7,8,9,10),0.5,9.5,6)
+#' @note
+#' \deqn{f(x)=}
+#' @references TBA
+#' @examples
+#' # Simple example
+#' mkrespoly(c(0,1,2,3,4,5,6,7,8,9,10),0.5,9.5,6)
+#'
+#' # Example with data driven knot locations
+#' knots <- centiles
+#' mkrespoly(c(0,1,2,3,4,5,6,7,8,9,10),0.5,9.5,6)
 mkrespoly <- function(x,t1,t2,order=4) {
   if (order < 4) { stop("order must be 4 or larger") }
   if (t1 >= t2) { stop("t1 must be strictly smaller than t2") }

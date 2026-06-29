@@ -2,7 +2,7 @@
 % Please edit documentation in R/nlcombination.R
 \name{inverse.logit}
 \alias{inverse.logit}
-\title{Inverse logit (sigmoid) function}
+\title{Sigmoid (inverse logit) function}
 \usage{
 inverse.logit(x)
 }
@@ -13,8 +13,14 @@ inverse.logit(x)
 numeric vector or scalar of same length as x
 }
 \description{
-Inverse logit (sigmoid) function
+Returns the sigmoid transformed value(s) of x
+}
+\note{
+Nothing to be noted
 }
 \examples{
 inverse.logit(-3.4)
+}
+\author{
+Jan Brink Valentin
 }

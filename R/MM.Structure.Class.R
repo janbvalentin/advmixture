@@ -40,6 +40,8 @@ library(data.table, include.only = c("data.table"))
 #' @export
 #'
 #' @examples
+#'
+#'
 MM.Structure.Class <- setRefClass(
   "MM.Structure.Class",
   fields = list(
@@ -604,7 +606,7 @@ MM.impute.missing <- function(x,data,data_time_series,n) {
 # Note: marginals does not necessarily make sense???
 
 
-# TODO: write get-functions
+# TODO: write get and set functions
 
 
 if (FALSE) {

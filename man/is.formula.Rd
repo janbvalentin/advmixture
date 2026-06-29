@@ -10,11 +10,17 @@ is.formula(x)
 \item{x}{any object}
 }
 \value{
-boolean
+logical
 }
 \description{
-Is object formula
+Returns logical indicating if x is a formula starting with "~"
+}
+\note{
+Nothing to be noted
 }
 \examples{
 is.formula(~x1+x2)
+}
+\author{
+Jan Brink Valentin
 }

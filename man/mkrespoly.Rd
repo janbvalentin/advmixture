@@ -2,7 +2,7 @@
 % Please edit documentation in R/mkrespoly.R
 \name{mkrespoly}
 \alias{mkrespoly}
-\title{Make restricted polynomials}
+\title{Restricted polynomials}
 \usage{
 mkrespoly(x, t1, t2, order = 4)
 }
@@ -11,7 +11,7 @@ mkrespoly(x, t1, t2, order = 4)
 
 \item{t1}{numeric scalar indicating first knot point}
 
-\item{t2}{numeric scalar indicating second knot point}
+\item{t2}{numeric scalar indicating second/last knot point}
 
 \item{order}{integer > 3 defining the polynomial order. Degrees of freedom = order - 2. Default order is 4}
 }
@@ -19,8 +19,23 @@ mkrespoly(x, t1, t2, order = 4)
 matrix with number of rows equal to the length of x and number of columns equal to degrees of freedom.
 }
 \description{
-Make restricted polynomials
+The function generates a matrix containing the variables used to fit restricted polynomials of order n. The rows of the matrix has length length(x)
+and the number of columns are equal to n-2, where first column equals x and the remaining columns are functionals of x.
+}
+\note{
+\deqn{f(x)=}
 }
 \examples{
+# Simple example
 mkrespoly(c(0,1,2,3,4,5,6,7,8,9,10),0.5,9.5,6)
+
+# Example with data driven knot locations
+knots <- centiles
+mkrespoly(c(0,1,2,3,4,5,6,7,8,9,10),0.5,9.5,6)
+}
+\references{
+TBA
+}
+\author{
+Jan Brink Valentin
 }

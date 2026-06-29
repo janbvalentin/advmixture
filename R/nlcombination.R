@@ -2,31 +2,42 @@
 
 
 
-
-
-#' Inverse logit (sigmoid) function
-#'
+#' Sigmoid (inverse logit) function
+#' @author Jan Brink Valentin
+#' @description
+#' Returns the sigmoid transformed value(s) of x
 #' @param x numeric vector or scalar
 #'
 #' @returns numeric vector or scalar of same length as x
 #' @export
+#'
+#' @note
+#' Nothing to be noted
 #'
 #' @examples inverse.logit(-3.4)
 inverse.logit <- function(x) {1/(exp(-x)+1)}
 
 
 #' Is object formula
-#'
+#' @author Jan Brink Valentin
+#' @description
+#' Returns logical indicating if x is a formula starting with "~"
 #' @param x any object
 #'
-#' @returns boolean
+#' @returns logical
 #' @export
+#'
+#' @note
+#' Nothing to be noted
 #'
 #' @examples is.formula(~x1+x2)
 is.formula <- function(x) {is.call(x) && x[[1]] == quote(`~`)}
 
 
 #' Non-linear combinations
+#' @author Jan Brink Valentin
+#' @description
+#' Uses the delta method to estimate ...
 #'
 #' @param x formula or charecter.
 #' @param coefs numeric vector
@@ -37,6 +48,10 @@ is.formula <- function(x) {is.call(x) && x[[1]] == quote(`~`)}
 #'
 #' @returns numeric vector containing point estimate, untransformed std. error, confidence interval
 #' @export
+#'
+#' @note
+#' Nothing to be noted
+#' @references TBA
 #'
 #' @examples increment <- 1.3
 #' @examples nlcombination(~(x1+x2)/increment,c(3,3),matrix(c(2.4265256,0.7562080,0.7562080,2.1329994),nrow=2))
