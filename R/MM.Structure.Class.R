@@ -33,6 +33,7 @@ library(data.table, include.only = c("data.table"))
 #' @field log_likelihood numeric.
 #' @field nparameters numeric.
 #' @field BIC numeric.
+#' @field trained logical.
 #' @field debug_level numeric.
 #'
 #'
@@ -62,6 +63,7 @@ MM.Structure.Class <- setRefClass(
     log_likelihood = "numeric",
     nparameters = "numeric",
     BIC = "numeric",
+    trained = "logical",
     debug_level = "numeric"
   ),
   methods = list(
@@ -236,6 +238,9 @@ MM.Structure.Class <- setRefClass(
           stop("Node type unknown")
         }
       }
+
+      .self$trained = FALSE
+
       return(NULL)
     },
 
@@ -259,6 +264,8 @@ MM.Structure.Class <- setRefClass(
 
       # Normalise weights across hidden states
       .self$likelihood_weights <- .self$likelihood_weights/apply(.self$likelihood_weights,1,sum)
+
+      .self$trained = FALSE
 
       return(NULL)
     },
@@ -490,9 +497,39 @@ MM.Structure.Class <- setRefClass(
       .self$likelihood_weights <- exp(.self$likelihood_weights-subject_normalisation_factor)
 
       return(NULL)
-    }
-    # TODO: make help functions inside class to avoid to many argument checks!!!
+    },
 
+    #############################
+    # Help functions
+    #############################
+    check_node_names <- function(nodes) {
+      if (length(nodes)==0){
+        stop("node_values must contain names")
+      } else {
+        if (!all(nodes %in% .self$node_names)) {
+          stop("Not all node names in node_values exists")
+        }
+        if (length(nodes)!=length(unique(nodes))){
+          stop("Node names in node_values may only appear ones")
+        }
+      }
+      return(NULL)
+    },
+    is.trained <- function() {
+      return(.self$trained)
+    },
+    get_log_likelihood <- function() {
+      return(.self$log_likelihood)
+    },
+    get_BIC <- function() {
+      return(.self$BIC)
+    },
+    get_model_parameters <- function(hidden_state,node) {
+
+    },
+    set_model_parameters <- function(hidden_state,node,params) {
+      # TODO: check params are consistent with node
+    }
   )
 )
 
@@ -508,6 +545,26 @@ MM.Structure.Class <- setRefClass(
 #' @examples
 MM.train <- function(x,reinitialise=FALSE,tol=0.01) {
 
+  if (class(x) != "MM.Structure.Class") {
+    stop("x is not an MM.Structure.Class object")
+  }
+
+  if (reinitialise) {
+    x$setup_node_conf()
+    x$set_random()
+  }
+
+  x$Mstep()
+  x$Estep()
+  old_ll <- x$log_likelihood
+  repeat {
+    x$Mstep()
+    x$Estep()
+    if (x$log_likelihood-old_ll < tol) {break}
+    old_ll <- x$log_likelihood
+  }
+
+  x$trained = TRUE
   return(NULL)
 }
 #' Title
@@ -525,9 +582,14 @@ MM.cond.h.sample <- function(x,node_values,n) {
   if (class(x) != "MM.Structure.Class") {
     stop("x is not an MM.Structure.Class object")
   }
-  # TODO: check if x have been trained
+  if (!x$is.trained) {
+    stop("x has not been trained or has been reinitialised. Use MM.train to train x")
+  }
 
-  # TODO: check if names(node_values) %in% node names of x
+
+  x.check_node_names(names(node_values))
+
+
 
   #         H
   #       / | \
@@ -541,15 +603,37 @@ MM.cond.h.sample <- function(x,node_values,n) {
   # 2) Normalise conditional hidden state probabilities
   # 3) Sample H from conditional hidden state probabilities
 
-  for (j in 1:length(x.nodes)) {
-    for (k in 1:length(x.phidden)) {
+  for (j in 1:length(x$nodes)) {
+    for (k in 1:length(x$phidden)) {
+      if (x$nodes[[j]]$type == "") {
 
+      }
     }
   }
 
   # TODO: Condition on time series? E.g. use normal distribution and predicted curve as mean
 
 }
+
+
+#' Title
+#'
+#' @param x
+#' @param phidden
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+reset_hidden = function(x,phidden = c(NaN,NaN,NaN)) {
+  if (class(x) != "MM.Structure.Class") {
+    stop("x is not an MM.Structure.Class object")
+  }
+  x.reset_hidden(phidden)
+  return(NULL)
+}
+
+
 #' Title
 #'
 #' @param x MM.Structure.Class object
@@ -563,6 +647,22 @@ MM.cond.h.sample <- function(x,node_values,n) {
 #' @examples
 MM.cond.sample <- function(x,hidden_state,nodes,n) {
 
+  if (class(x) != "MM.Structure.Class") {
+    stop("x is not an MM.Structure.Class object")
+  }
+  if (!x$is.trained) {
+    stop("x has not been trained or has been reinitialised. Use MM.train to train x")
+  }
+
+  if (length(hidden_state)!=1) {
+    stop(paste("hidden_state must be one of the following numbers",paste(sprintf("%i ",1:length(x$phidden)),collapse='')))
+  }
+  if (!(hidden_state %in% 1:length(x$phidden))) {
+    stop(paste("hidden_state must be one of the following numbers",paste(sprintf("%i ",1:length(x$phidden)),collapse='')))
+  }
+
+  x.check_node_names(nodes)
+
   #         H
   #       / | \
   #      |  |  |
@@ -571,6 +671,8 @@ MM.cond.sample <- function(x,hidden_state,nodes,n) {
 
   # 1) Choose a hidden state H
   # 2) Sample from P(L1|H), P(M1|H) and P(M2|H) (all or subset)
+
+
 
 }
 
@@ -603,10 +705,25 @@ MM.impute.missing <- function(x,data,data_time_series,n) {
 
 ###################
 
+
+get_log_likelihood <- function(x) {
+
+}
+get_BIC <- function(x) {
+
+}
+get_model_parameters <- function(x,hidden_state,node) {
+
+}
+set_model_parameters <- function(x,hidden_state,node,params) {
+  # TODO: check params are consistent with node
+}
+
+
 # Note: marginals does not necessarily make sense???
 
 
-# TODO: write get and set functions
+
 
 
 if (FALSE) {
