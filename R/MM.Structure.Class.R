@@ -288,6 +288,8 @@ MM.Structure.Class <- setRefClass(
     #############################
     Mstep = function() {
 
+      # TODO: multithread by hidden state inside regression nodes
+
       .self$weights <- .self$likelihood_weights
 
       for (j in 1:length(.self$nodes)) {
@@ -357,6 +359,8 @@ MM.Structure.Class <- setRefClass(
     # Evaluate responsibilities (weights) using current model parameters
     #############################
     Estep = function() {
+
+      # TODO: multithread by hidden state inside regression nodes
 
       .self$likelihood_weights[,] <- 0
 
@@ -533,6 +537,24 @@ MM.Structure.Class <- setRefClass(
   )
 )
 
+
+
+#' Title
+#'
+#' @param x
+#' @param number_of_tries
+#' @param hidden_states
+#' @param reinitialise
+#' @param tol
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+MM.optimise <- function(x,number_of_tries=5,hidden_states=c(5,10,15,20),reinitialise=FALSE,tol=0.01) {
+
+}
+
 #' Title
 #'
 #' @param x MM.Structure.Class object
@@ -706,15 +728,73 @@ MM.impute.missing <- function(x,data,data_time_series,n) {
 ###################
 
 
+Mstep <- function(x) {
+
+}
+Estep <- function(x) {
+
+}
+#' Title
+#'
+#' @param x
+#'
+#' @returns
+#' @export
+#' @note
+#' \deqn{f(x)=}
+#' @references TBA
+#'
+#' @examples
 get_log_likelihood <- function(x) {
 
 }
+#' Title
+#'
+#' @param x
+#'
+#' @returns
+#' @export
+#' @note
+#' \deqn{f(x)=}
+#' @references TBA
+#'
+#' @examples
 get_BIC <- function(x) {
 
 }
+#' Title
+#'
+#' @param x
+#' @param hidden_state
+#' @param node
+#'
+#' @returns
+#' @export
+#' @note
+#' \deqn{f(x)=}
+#' @references TBA
+#'
+#' @examples
 get_model_parameters <- function(x,hidden_state,node) {
 
 }
+#' Set model parameters
+#' @author Jan Brink Valentin
+#' @description
+#' Can be used to set initial conditions, but remember to run Estep before training, otherwise initial conditions are overridden
+#'
+#' @param x
+#' @param hidden_state
+#' @param node
+#' @param params
+#'
+#' @returns
+#' @export
+#' @note
+#' \deqn{f(x)=}
+#' @references TBA
+#'
+#' @examples
 set_model_parameters <- function(x,hidden_state,node,params) {
   # TODO: check params are consistent with node
 }
