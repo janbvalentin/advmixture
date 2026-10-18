@@ -506,7 +506,7 @@ MM.Structure.Class <- setRefClass(
     #############################
     # Help functions
     #############################
-    check_node_names <- function(nodes) {
+    check_node_names = function(nodes) {
       if (length(nodes)==0){
         stop("node_values must contain names")
       } else {
@@ -519,19 +519,19 @@ MM.Structure.Class <- setRefClass(
       }
       return(NULL)
     },
-    is.trained <- function() {
+    is.trained = function() {
       return(.self$trained)
     },
-    get_log_likelihood <- function() {
+    get_log_likelihood = function() {
       return(.self$log_likelihood)
     },
-    get_BIC <- function() {
+    get_BIC = function() {
       return(.self$BIC)
     },
-    get_model_parameters <- function(hidden_state,node) {
+    get_model_parameters = function(hidden_state,node) {
 
     },
-    set_model_parameters <- function(hidden_state,node,params) {
+    set_model_parameters = function(hidden_state,node,params) {
       # TODO: check params are consistent with node
     }
   )
@@ -542,16 +542,15 @@ MM.Structure.Class <- setRefClass(
 #' Title
 #'
 #' @param x
-#' @param number_of_tries
+#' @param number_of_tries indicates the number models to be trained for each hidden state. Number of total models are
 #' @param hidden_states
-#' @param reinitialise
-#' @param tol
+#' @param ... parameters inherited by MM.train
 #'
 #' @returns
 #' @export
 #'
 #' @examples
-MM.optimise <- function(x,number_of_tries=5,hidden_states=c(5,10,15,20),reinitialise=FALSE,tol=0.01) {
+MM.optimise <- function(x,number_of_tries=5,hidden_states=c(5,10,15,20),...) {
 
 }
 
@@ -622,17 +621,36 @@ MM.cond.h.sample <- function(x,node_values,n) {
   # P(H|M1,M2)=P(M1|H)P(M2|H)P(H)/(sum_H P(M1|H)P(M2|H)P(H))
 
   # 1) Calculate conditional probability for each hidden state using P(M1|H)P(M2|H)P(H)
-  # 2) Normalise conditional hidden state probabilities
+  # 2) Normalise conditional hidden state probabilities (skip)
   # 3) Sample H from conditional hidden state probabilities
 
-  for (j in 1:length(x$nodes)) {
-    for (k in 1:length(x$phidden)) {
-      if (x$nodes[[j]]$type == "") {
-
-      }
-    }
+  if ("data.frame" %in% class(node_values)) {
+    nconditions <- nrow(node_values)
+  } else if ("numeric" %in% class(node_values)) {
+    nconditions <- 1
+  } else {
+    stop("node_values is not a data.frame or numeric vector")
   }
 
+  cond.h.probs <- x$phidden
+  for (l in 1:nconditions) {
+    for (k in 1:length(x$phidden)) {
+      for (j in 1:length(x$nodes)) {
+
+        if (!(x$nodes[[j]]$type %in% names(node_values))) {
+          next
+        }
+
+        if (x$nodes[[j]]$type == "") {
+          cond.h.probs[k] <- cond.h.probs[k]*...
+        } else if (x$nodes[[j]]$type == "") {
+          cond.h.probs[k] <- cond.h.probs[k]*...
+        }
+      }
+    }
+    # Sample and store
+    sample(c(1,2,3,4),size=10,replace=TRUE,prob=cond.h.probs)
+  }
   # TODO: Condition on time series? E.g. use normal distribution and predicted curve as mean
 
 }
