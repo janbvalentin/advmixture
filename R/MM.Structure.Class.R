@@ -85,12 +85,21 @@ MM.Structure.Class <- setRefClass(
       time_series_nodes <- c("temp_ologit","temp_mlogit","temp_regress")
       standard_nodes <- c("normal","multinomial","poisson")
 
+
+      # Check data and sequence_data are data.tables
+      if (!"data.table" %in% class(data)) {
+        stop("data is not class data.table")
+      }
+      if (!"data.table" %in% class(sequence_data)) {
+        stop("sequence_data is not class data.table")
+      }
+
       .self$nhidden <- length(phidden)
       .self$phidden <- phidden
       .self$data <- data.table::data.table(data)
       .self$sequence_data <- data.table::data.table(sequence_data)
       .self$sid <- subject_id
-      .self$nsubjects <- nrow(.self$data)
+      .self$nsubjects <- max(nrow(.self$data),length(unique(mm.test.sequences[[subject_id]])))
       .self$temporal_variables <- temporal_variables
       .self$node_types <- node_types
       .self$node_names <- node_names
@@ -185,13 +194,14 @@ MM.Structure.Class <- setRefClass(
             .self$nodes[[j]]$levels <- as.numeric(unique(.self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))]))
             .self$nodes[[j]]$levels <- .self$nodes[[j]]$levels[order(.self$nodes[[j]]$levels)]
 
-            .self$nodes[[j]]$data <- lapply(1:(length(.self$nodes[[j]]$levels)-1),function(j){
+            .self$nodes[[j]]$data <- lapply(1:(length(.self$nodes[[j]]$levels)-1),function(k){
               data_tmp <- data.table::copy(.self$sequence_data);
-              data_tmp[,cat_outcome := .self$nodes[[j]]$levels[j+1]]
-            }) |> rbindlist()
+              data_tmp[,cat_outcome := .self$nodes[[j]]$levels[k+1]]
+            }) |> data.table::rbindlist()
             .self$nodes[[j]]$data[,bin_outcome := data.table::fifelse(.self$nodes[[j]]$data[,eval(as.name(.self$nodes[[j]]$name))]>=.self$nodes[[j]]$data[,"cat_outcome"],1,0)]
 
-            .self$nodes[[j]]$formula <- reformulate(c("0","cat_outcome",.self$temporal_variables),"bin_outcome")
+            .self$nodes[[j]]$formula <- reformulate(c("0","factor(cat_outcome)",.self$temporal_variables),"bin_outcome")
+            .self$nodes[[j]]$observations_pr_subj <- .self$nodes[[j]]$data[, .(count = .N), by = eval(as.name(.self$sid))]$count
 
             nparameters_tmp <- nparameters_tmp + length(.self$nodes[[j]]$levels)-2
 
@@ -201,13 +211,14 @@ MM.Structure.Class <- setRefClass(
             .self$nodes[[j]]$levels <- as.numeric(unique(.self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))]))
             .self$nodes[[j]]$levels <- .self$nodes[[j]]$levels[order(.self$nodes[[j]]$levels)]
 
-            .self$nodes[[j]]$data <- lapply(1:(length(.self$nodes[[j]]$levels)-1),function(j){
-              data_tmp <- data.table::copy(.self$sequence_data[.self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))] == .self$nodes[[j]]$levels[1] | .self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))] == .self$nodes[[j]]$levels[j+1],]);
-              data_tmp[,cat_outcome := .self$nodes[[j]]$levels[j+1]]
-            }) |> rbindlist()
+            .self$nodes[[j]]$data <- lapply(1:(length(.self$nodes[[j]]$levels)-1),function(k){
+              data_tmp <- data.table::copy(.self$sequence_data[.self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))] == .self$nodes[[j]]$levels[1] | .self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))] == .self$nodes[[j]]$levels[k+1],]);
+              data_tmp[,cat_outcome := .self$nodes[[j]]$levels[k+1]]
+            }) |> data.table::rbindlist()
             .self$nodes[[j]]$data[,bin_outcome := data.table::fifelse(.self$nodes[[j]]$data[,eval(as.name(.self$nodes[[j]]$name))]==.self$nodes[[j]]$data[,"cat_outcome"],1,0)]
 
-            .self$nodes[[j]]$formula <- reformulate(c("0","cat_outcome",paste(.self$temporal_variables,"cat_outcome",sep=":")),"bin_outcome")
+            .self$nodes[[j]]$formula <- reformulate(c("0","factor(cat_outcome)",paste(.self$temporal_variables,"factor(cat_outcome)",sep=":")),"bin_outcome")
+            .self$nodes[[j]]$observations_pr_subj <- .self$nodes[[j]]$data[, .(count = .N), by = eval(as.name(.self$sid))]$count
 
             nparameters_tmp <- nparameters_tmp*(length(.self$nodes[[j]]$levels)-1)
 
@@ -261,6 +272,7 @@ MM.Structure.Class <- setRefClass(
 
       # Set weights to random
       .self$likelihood_weights <- matrix(runif(.self$nhidden*.self$nsubjects),ncol = .self$nhidden)
+      #print(.self$likelihood_weights)
 
       # Normalise weights across hidden states
       .self$likelihood_weights <- .self$likelihood_weights/apply(.self$likelihood_weights,1,sum)
@@ -294,34 +306,31 @@ MM.Structure.Class <- setRefClass(
 
       for (j in 1:length(.self$nodes)) {
 
-        if (.self$nodes[[j]]$type == "temp_ologit") {
+        if (.self$nodes[[j]]$type == "temp_ologit" | .self$nodes[[j]]$type == "temp_mlogit") {
 
           # Estimate models from the random weights
           for (k in 1:.self$nhidden) {
-            .self$nodes[[j]]$models[[k]] <- speedglm::speedglm(.self$nodes[[j]]$formula,
-                                                               family = binomial(link="logit"),
+            #print(k)
+            .f <- .self$nodes[[j]]$formula
+            environment(.f) <- environment()
+            .current.weights <- vctrs::vec_rep_each(.self$weights[,k],.self$nodes[[j]]$observations_pr_subj)
+            #print(length(.current.weights))
+            #print(nrow(.self$nodes[[j]]$data))
+            .self$nodes[[j]]$models[[k]] <- speedglm::speedglm(.f,
+                                                               family = quasibinomial(link="logit"),
                                                                data = .self$nodes[[j]]$data,
-                                                               weights = vctrs::vec_rep_each(.self$weights[,k],.self$observations_pr_subj))
-          }
-
-        } else if (.self$nodes[[j]]$type == "temp_mlogit") {
-
-          # Estimate models from the random weights
-          for (k in 1:.self$nhidden) {
-            .self$nodes[[j]]$models[[k]] <- speedglm::speedglm(.self$nodes[[j]]$formula,
-                                                               family = binomial(link="logit"),
-                                                               data = .self$nodes[[j]]$data,
-                                                               weights = vctrs::vec_rep_each(.self$weights[,k],.self$observations_pr_subj))
+                                                               weights = .current.weights)
           }
 
         } else if (.self$nodes[[j]]$type == "temp_regress") {
 
           # Estimate models from the random weights
           for (k in 1:.self$nhidden) {
+            .current.weights <- vctrs::vec_rep_each(.self$weights[,k],.self$observations_pr_subj)
             .self$nodes[[j]]$models[[k]] <- speedglm::speedglm(reformulate(.self$temporal_variables,.self$nodes[[j]]$name),
                                                                family = gaussian(link="identity"),
                                                                data = .self$sequence_data,
-                                                               weights = vctrs::vec_rep_each(.self$weights[,k],.self$observations_pr_subj),
+                                                               weights = .current.weights,
                                                                fitted = TRUE) # Faster predict
           }
 
@@ -374,25 +383,25 @@ MM.Structure.Class <- setRefClass(
           for (k in 1:.self$nhidden) {
 
             ll_prediction_1 <- predict(.self$nodes[[j]]$models[[k]],
-                                       newdata=.self$sequence_data[,cat_outcome := eval(as.name(.self$nodes[[j]]$name))],
+                                       newdata=.self$sequence_data[,cat_outcome := data.table::fifelse(eval(as.name(.self$nodes[[j]]$name))==lowest_level,NA_integer_,as.numeric(eval(as.name(.self$nodes[[j]]$name))))],
                                        type='response')
             ll_prediction_2 <- predict(.self$nodes[[j]]$models[[k]],
-                                       newdata=.self$sequence_data[,cat_outcome := pmin(eval(as.name(.self$nodes[[j]]$name))+1,highest_level)],
+                                       newdata=.self$sequence_data[,cat_outcome := data.table::fifelse(eval(as.name(.self$nodes[[j]]$name))==highest_level,NA_integer_,as.numeric(1+eval(as.name(.self$nodes[[j]]$name))))],
                                        type='response')
 
             # Terms are switched because logistic regression uses 1/(exp(-xb)+1) and ologit uses 1/(exp(-k+xb)+1)
             ll_prediction <- cbind(data.table::data.table(log(
-              data.table::fifelse(.self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))] == lowest_level,1,ll_prediction_1) -
-              data.table::fifelse(.self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))] == highest_level,0,ll_prediction_2)))
+              data.table::fifelse(is.na(ll_prediction_1),1,ll_prediction_1) -
+              data.table::fifelse(is.na(ll_prediction_2),0,ll_prediction_2)))
               ,.self$sequence_data[,eval(as.name(.self$sid))])
 
             # Add to LogLik matrix
             if (.self$debug_level >= 5) {
               print(sprintf("Printing observation-wise and subjectwise log-likelihood contribution of class %s:",class(ll_prediction)[1]))
-              print(head(ll_prediction))
-              print(head(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = eval(.self$sid)]))
+              print(ll_prediction)
+              print(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = V2])
             }
-            .self$likelihood_weights[,k] <- .self$likelihood_weights[,k] + as.matrix(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = eval(.self$sid)][,2])
+            .self$likelihood_weights[,k] <- .self$likelihood_weights[,k] + as.matrix(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = V2][,2])
           }
 
         } else if (.self$nodes[[j]]$type == "temp_mlogit") {
@@ -401,8 +410,8 @@ MM.Structure.Class <- setRefClass(
           for (k in 1:.self$nhidden) {
 
             ll_prediction <- lapply(.self$nodes[[j]]$levels[2:n_levels],function(level){
-              exp(predict(.self$nodes[[j]]$models[[k]],newdata=.self$sequence_data[,cat_outcome := level],type='link'))
-            }) |> cbindlist()
+              data.table::data.table(exp(predict(.self$nodes[[j]]$models[[k]],newdata=.self$sequence_data[,cat_outcome := level],type='link')))
+            }) |> data.table::cbindlist()
 
             ll_prediction <- cbind(data.table::data.table(log(
               apply(cbind(1,ll_prediction,.self$sequence_data[,eval(as.name(.self$nodes[[j]]$name))]),
@@ -413,10 +422,10 @@ MM.Structure.Class <- setRefClass(
             # Add to LogLik matrix
             if (.self$debug_level >= 5) {
               print(sprintf("Printing observation-wise and subjectwise log-likelihood contribution of class %s:",class(ll_prediction)[1]))
-              print(head(ll_prediction))
-              print(head(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = eval(.self$sid)]))
+              print(ll_prediction)
+              print(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = V2])
             }
-            .self$likelihood_weights[,k] <- .self$likelihood_weights[,k] + as.matrix(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = eval(.self$sid)][,2])
+            .self$likelihood_weights[,k] <- .self$likelihood_weights[,k] + as.matrix(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = V2][,2])
           }
 
         } else if (.self$nodes[[j]]$type == "temp_regress") {
@@ -435,10 +444,10 @@ MM.Structure.Class <- setRefClass(
             # Add to LogLik matrix
             if (.self$debug_level >= 5) {
               print(sprintf("Printing observation-wise and subjectwise log-likelihood contribution of class %s:",class(ll_prediction)[1]))
-              print(head(ll_prediction))
-              print(head(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = eval(.self$sid)]))
+              print(ll_prediction)
+              print(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = V2])
             }
-            .self$likelihood_weights[,k] <- .self$likelihood_weights[,k] + as.matrix(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = eval(.self$sid)][,2])
+            .self$likelihood_weights[,k] <- .self$likelihood_weights[,k] + as.matrix(ll_prediction[, lapply(.SD,sum,na.rm = TRUE), by = V2][,2])
           }
 
         } else if (.self$nodes[[j]]$type == "normal") {
@@ -495,7 +504,7 @@ MM.Structure.Class <- setRefClass(
 
       # Likelihood and BIC (log and sum) (check Bishop)
       .self$log_likelihood <- sum(subject_normalisation_factor+subject_extreme_factor)
-      .self$BIC <- .self$log_likelihood + 0.5*log(.self$nobservations)*.self$nparameters
+      .self$BIC <- .self$log_likelihood - 0.5*log(.self$nobservations)*.self$nparameters
 
       # Normalise across hidden states
       .self$likelihood_weights <- exp(.self$likelihood_weights-subject_normalisation_factor)
@@ -575,13 +584,19 @@ MM.train <- function(x,reinitialise=FALSE,tol=0.01) {
     x$set_random()
   }
 
+  stagnate_steps <- 5
+  stagnate_counts <- 0
+  j <- 0
   x$Mstep()
   x$Estep()
   old_ll <- x$log_likelihood
   repeat {
+    j <- j + 1
     x$Mstep()
     x$Estep()
-    if (x$log_likelihood-old_ll < tol) {break}
+    print(sprintf("iter: %4.0f, log-Lik: %12.1f, BIC: %12.1f",j,x$log_likelihood,x$BIC))
+    if (x$log_likelihood-old_ll < tol) {stagnate_counts <- stagnate_counts + 1}
+    if (stagnate_counts >= stagnate_steps) {break}
     old_ll <- x$log_likelihood
   }
 
@@ -720,6 +735,10 @@ MM.impute.missing <- function(x,data,data_time_series,n) {
 
 }
 
+MM.get.cluster.assignment <- function(x) {
+  return(apply(x$likelihood_weights, 1, which.max))
+}
+
 ###################
 ## EQUIVALENCE 1 ##
 
@@ -820,7 +839,117 @@ set_model_parameters <- function(x,hidden_state,node,params) {
 
 # Note: marginals does not necessarily make sense???
 
+if (FALSE) {
 
+
+  # Test time series clustering with categorical data:
+  set.seed(12345)
+  mm.test.sequences <- data.table::data.table(id=1:5000)
+  mm.test.sequences <- mm.test.sequences[rep(id,50)]
+  mm.test.sequences[,time:=1:.N,by=id]
+  mm.test.sequences <- mm.test.sequences[order(id,time)]
+  first <- c(rbinom(50*2000,3,1/(1+exp(runif(50*2000,0,2)*mm.test.sequences$time[1:(50*2000)]*          0.01+rnorm(50*2000,9,3)))),
+             rbinom(50*3000,3,1/(1+exp(runif(50*3000,0,2)*mm.test.sequences$time[(50*2000+1):(50*5000)]*0.01+rnorm(50*3000,5,3)))))
+  second <- c(rbinom(50*2000,3,1/(1+exp(runif(50*2000,0,2)*mm.test.sequences$time[1:(50*2000)]*          0.01+rnorm(50*2000,2,3)))),
+              rbinom(50*3000,3,1/(1+exp(runif(50*3000,0,2)*mm.test.sequences$time[(50*2000+1):(50*5000)]*0.01+rnorm(50*3000,-2,3)))))
+
+  mm.test.sequences[,education:=first] # nominal outcome k=4
+  mm.test.sequences[,employment:=second] # nominal outcome k=4
+  mm.test.sequences[, education := cummax(education), by = id]
+
+  table(mm.test.sequences[id<=2000,]$education)
+  table(mm.test.sequences[id>2000,]$education)
+  table(mm.test.sequences[id<=2000,]$employment)
+  table(mm.test.sequences[id>2000,]$employment)
+
+  centiles <- quantile(mm.test.sequences$time, probs = c(0.05,0.95), na.rm = TRUE)
+  timevars <- mkrespoly(mm.test.sequences$time,centiles[1],centiles[2],5)
+  colnames(timevars) <- c("tv1","tv2","tv3")
+  mm.test.sequences <- cbind(mm.test.sequences,timevars)
+
+
+
+
+  # Object init
+  mm.object <- MM.Structure.Class$new(sequence_data = mm.test.sequences,
+                                      subject_id = "id",
+                                      phidden = c(NaN,NaN), #c(NaN,NaN,NaN),
+                                      node_types = c("temp_ologit","temp_mlogit"), #,"temp_ologit","temp_mlogit","temp_regress","normal","multinomial","poisson"),
+                                      node_names = c("education","employment"),
+                                      temporal_variables = c("tv1","tv2","tv3"),
+                                      debug_level = 0)
+
+  # Train
+  MM.train(mm.object)
+
+  # Get cluster
+  cluster_assignment <- data.frame(MM.get.cluster.assignment(mm.object))
+  table(cluster_assignment)
+  table(cluster_assignment[1:2000,])
+  table(cluster_assignment[2001:5000,])
+
+
+  mm.object$nodes[[1]]$models
+  mm.object$nodes[[2]]$models
+
+
+  #
+  #
+  # # TODO: use splines
+  # for (j in 1:20) {
+  #   mm.object$Mstep()
+  #   mm.object$Estep()
+  #   #print(mm.object$phidden)
+  #   print(sprintf("iter: %4.0f, lL: %12.1f, BIC: %12.1f",j,mm.object$log_likelihood,mm.object$BIC))
+  # }
+  #
+  # mm.object$phidden
+  #
+  # mm.object$log_likelihood
+  # mm.object$BIC
+  # check <- mm.object$likelihood_weights
+  # mm.object$nodes
+  #
+  #
+  # k <- 2
+  # j <- 1
+  # mm.object$nodes[[j]]$type
+  # mm.object$nodes[[j]]$name
+  # mm.object$nodes[[j]]$formula
+  # mm.object$nodes[[j]]$levels
+  # data <- mm.object$nodes[[j]]$data
+  # .w <- vctrs::vec_rep_each(mm.object$weights[,k],mm.object$nodes[[j]]$observations_pr_subj)
+  # speedglm::speedglm(mm.object$nodes[[j]]$formula,
+  #                    family = quasibinomial(link="logit"),
+  #                    data = mm.object$nodes[[j]]$data,
+  #                    weights = .w)
+  # nrow(mm.object$nodes[[j]]$data)
+  # table(complete.cases(mm.object$nodes[[j]]$data))
+  # length(vctrs::vec_rep_each(mm.object$weights[,k],mm.object$nodes[[j]]$observations_pr_subj))
+  # class(vctrs::vec_rep_each(mm.object$weights[,k],mm.object$nodes[[j]]$observations_pr_subj))
+  #
+  #
+  # mm.object$nodes[[1]]$models
+  # mm.object$phidden
+  #
+  #
+  # mm.object$Mstep()
+  # mm.object$likelihood_weights
+  # mm.object$phidden
+  # mm.object$nodes
+  # mm.object$log_likelihood
+  # mm.object$BIC
+  # mm.object$Estep()
+  # check <- mm.object$likelihood_weights
+
+
+
+
+
+
+
+
+}
 
 
 
