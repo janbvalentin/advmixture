@@ -39,7 +39,7 @@ is.formula <- function(x) {is.call(x) && x[[1]] == quote(`~`)}
 #' @description
 #' Uses the delta method to estimate ...
 #'
-#' @param x formula or charecter.
+#' @param x formula or character
 #' @param coefs numeric vector
 #' @param vcov symmetric positive definite numeric matrix with same number of rows and columns as length of coefs
 #' @param exp.form boolean indicating whether point estimate and corresponding confidence intervals should be exponentially transformed. Default is FALSE
